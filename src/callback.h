@@ -1,3 +1,4 @@
+#pragma once
 #include<event.h>
 #include<string.h>  
 #include <iostream>
@@ -8,7 +9,48 @@
 #include "Buffer.h"
 #include "net_tools.h"
 
-
+struct SenderReceiverStatus
+{
+    int sender;
+    bool sender_is_ready;
+    int receiver;
+    bool receiver_is_ready;
+};
+class ReplyCallBackArgs
+{
+    public:
+    ReplyCallBackArgs(){}
+    ~ReplyCallBackArgs(){}
+    event_base* base;
+    event* cur;
+    Buffer reply;
+    Buffer request;
+    /*
+    * status==0 --> address type is not support
+    * status==1 --> connect succeed
+    * status==2 --> connect timeout
+    */
+    int status;
+};
+class ConnectCallBackArgs
+{
+    public:
+    event_base* base;
+    event* cur;
+    Buffer request;
+    int client_socket;
+    
+};
+class RequestCallBackArgs
+{
+    public:
+    RequestCallBackArgs(){}
+    RequestCallBackArgs(size_t buf_size):buf(buf_size){}
+    ~RequestCallBackArgs(){}
+    event_base* base;
+    event* cur;
+    Buffer buf;
+};
 class MethodSelectionCallBackArgs
 {
     public:
@@ -34,6 +76,5 @@ struct AcceptCallbackArgs
 
 void request_cb(int fd, short events, void* _args);
 void method_selection_cb(int fd, short events, void* _args);
-bool CreateMethodSelection(const Buffer& greeting,Buffer& method_selection);
 void greeting_cb(int fd, short events, void* _args);
 void accept_cb(int fd, short events, void* _args);

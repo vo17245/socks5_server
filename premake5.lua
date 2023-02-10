@@ -15,24 +15,9 @@ project "socks5_server"
     
     filter "configurations:Debug"
         defines {"DEBUG"}
+
+        
     filter "configurations:Release"
         defines {"NDEBUG"}
         optimize "On"
 
-project "echo_server"
-    kind "ConsoleApp"
-    language "C++"
-    targetdir "bin/%{cfg.buildcfg}"
-    objdir "bin-int/%{cfg.buildcfg}"
-    files {"src/**.cpp","src/**.h"}
-    removefiles { "src/Application.cpp"}
-    includedirs{"/home/ubuntu/lib/libevent/include","src"}
-    
-    libdirs {"/home/ubuntu/lib/libevent/lib"}
-    links { "event" }
-    
-    filter "configurations:Debug"
-        defines {"DEBUG"}
-    filter "configurations:Release"
-        defines {"NDEBUG"}
-        optimize "On"

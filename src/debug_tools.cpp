@@ -1,5 +1,7 @@
 #include "debug_tools.h"
 #include <iostream>
+#include<arpa/inet.h>
+
 char hex_to_char(char hex)
 {
     char ret=0x10;
@@ -72,4 +74,83 @@ void print_method_selection(const char* method_selection)
 {
 	std::cout<<"VER: "<<byte_to_string(method_selection[0])<<std::endl;
 	std::cout<<"METHOD: "<<byte_to_string(method_selection[1])<<std::endl;
+}
+
+std::string byte_to_string_dec(uint8_t val)
+{
+	std::string ret;
+	uint8_t a=val%10;
+	val=val/10;
+	uint8_t b=val%10;
+	val=val/10;
+	if(val==0)
+	{
+		if(b==0)
+		{
+			ret.push_back(a+'0');
+		}
+		else
+		{
+			ret.push_back(b+'0');
+			ret.push_back(a+'0');
+		}
+
+	}
+	else
+	{
+		ret.push_back(val+'0');
+		ret.push_back(b+'0');
+		ret.push_back(a+'0');
+	}
+	return ret;
+}
+
+std::string ip_to_str4(uint32_t ip)
+{
+	std::string ret;
+	ret+=byte_to_string_dec(*(((char*)&ip)));
+	for(int i=1;i<4;i++)
+	{
+		ret.push_back('.');
+		ret+=byte_to_string_dec(*(((char*)&ip)+i));
+	}
+	return ret;
+}
+
+void print_request(const char* request)
+{
+	std::cout<<"VER: "<<byte_to_string(request[0])<<std::endl;
+	std::cout<<"REP: "<<byte_to_string(request[1])<<std::endl;
+	std::cout<<"RSV: "<<byte_to_string(request[2])<<std::endl;
+	std::cout<<"ATYP: "<<byte_to_string(request[3])<<std::endl;
+	if(request[3]==0x01)
+	{
+		std::cout<<"DST.ADDR: "<<ip_to_str4(*((uint32_t*)&request[4]))<<std::endl;
+		std::cout<<"DST.PORT: "<<ntohs(*((uint16_t*)&request[8]))<<std::endl;;
+	}
+	else if(request[3]==0x03)
+	{
+		std::cout<<"domain name length: "<<byte_to_string(request[4])<<std::endl;
+		std::cout<<"domain: ";
+		for(int i=0;i<(uint8_t)request[4];i++)
+		{
+			std::cout<<request[5+i];
+		}
+		std::cout<<std::endl;
+	}
+	else if(request[3]==0x04)
+	{
+		std::cout<<"DST.ADDR: ";
+		for(int i=0;i<16;i++)
+		{
+			std::cout<<byte_to_string(request[4+i]);
+		}
+		std::cout<<std::endl;
+		std::cout<<"DST.PORT: "<<ntohs(*((uint16_t*)&request[20]))<<std::endl;;
+	}
+}
+
+void print_debug_msg(const char* msg,const char* file,int line)
+{
+	std::cout<<"debug: "<<msg<<" in "<<file<<":"<<line<<std::endl;
 }
