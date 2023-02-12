@@ -21,11 +21,13 @@ void print_debug_msg(const char* msg,const char* file,int line);
     std::cout<<"start"<<std::endl;\
     x;\
     std::cout<<"end"<<std::endl;
+    #define DEBUG_CALL(x) x;
 #else
-    #define Call(x)
-    #define ERROR(x)
-    #define DEBUG(x)
+    #define NET_CALL(x) x;
+    #define LOG_ERROR(x) ;
+    #define LOG_DEBUG(x) ;
     #define LOG_CALL(x) x;
+    #define DEBUG_CALL(x) ;
 #endif
 
 

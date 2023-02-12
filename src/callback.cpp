@@ -5,17 +5,17 @@ std::unordered_map<int,SocketBuffer> socket_buffer_map;
 void talk_cb(int fd, short events, void* _args)
 {
     TalkCallbackArgs* args=(TalkCallbackArgs*)_args;
-    std::cout<<"----------talk event-------------"<<std::endl;
-    std::cout<<"socket: "<<fd<<std::endl;
-    std::cout<<"socket_with: "<<args->socket_with<<std::endl;
+    DEBUG_CALL(std::cout<<"----------talk event-------------"<<std::endl);
+    DEBUG_CALL(std::cout<<"socket: "<<fd<<std::endl);
+    DEBUG_CALL(std::cout<<"socket_with: "<<args->socket_with<<std::endl);
     if(events&EV_TIMEOUT)
     {
-        std::cout<<"event: timeout"<<std::endl;
+        DEBUG_CALL(std::cout<<"event: timeout"<<std::endl);
         goto ERROR;
     }
     else if(events&EV_READ)
     {
-        std::cout<<"event: read"<<std::endl;
+        DEBUG_CALL(std::cout<<"event: read"<<std::endl);
         auto iter=socket_buffer_map.find(fd);
         if(iter==socket_buffer_map.end())
         {
@@ -28,7 +28,7 @@ void talk_cb(int fd, short events, void* _args)
     }
     else if(events&EV_WRITE)
     {
-        std::cout<<"event: write"<<std::endl;
+        DEBUG_CALL(std::cout<<"event: write"<<std::endl);
         auto iter=socket_buffer_map.find(args->socket_with);
         if(iter==socket_buffer_map.end())
         {
@@ -59,28 +59,31 @@ void talk_cb(int fd, short events, void* _args)
 void reply_cb(int fd, short events, void* _args)
 {
     ReplyCallBackArgs* args=(ReplyCallBackArgs*)_args;
-    ssize_t recv_ret;
+    ssize_t send_ret;
     //event timeout
     if(events&EV_TIMEOUT)
     {
         goto ERROR;
     }
-    recv_ret=send(fd,args->reply.GetData()+args->send_cnt,args->reply.GetUsed()-args->send_cnt,0);
-    if(recv_ret==-1)
+    send_ret=send(fd,args->reply.GetData()+args->send_cnt,args->reply.GetUsed()-args->send_cnt,0);
+    if(send_ret==-1)
     {
         goto ERROR;
     }
-    args->send_cnt+=recv_ret;
+    args->send_cnt+=send_ret;
     //there is a data left
     if(args->send_cnt!=args->reply.GetUsed())
         return;
 
     //test
-    std::cout<<"-------reply----------"<<std::endl;
-    std::cout<<"client socket: "<<fd<<std::endl;
+    DEBUG_CALL(std::cout<<"-------reply----------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<fd<<std::endl);
     if(args->status==1)
-        std::cout<<"destin socket: "<<args->destin_socket<<std::endl;
-    print_reply(args->reply.GetData());
+    {
+        DEBUG_CALL(std::cout<<"destin socket: "<<args->destin_socket<<std::endl);
+    }
+        
+    DEBUG_CALL(print_reply(args->reply.GetData()));
     // client destin 开始通信 
     {
         // set event
@@ -120,6 +123,7 @@ void reply_cb(int fd, short events, void* _args)
 
 
     ERROR:
+    event_free(args->cur);
     shutdown(fd,SHUT_RDWR);
     close(fd);
     if(args->status==1)
@@ -127,7 +131,6 @@ void reply_cb(int fd, short events, void* _args)
         shutdown(args->destin_socket,SHUT_RDWR);
         close(args->destin_socket);
     }
-    event_free(args->cur);
     delete args;
     return;
 
@@ -180,9 +183,9 @@ void connect_cb(int fd, short events, void* _args)
     {
         // 链接destin超时，发送错误信息reply到client
 
-        std::cout<<"----------connect timeout---------------"<<std::endl;
-        std::cout<<"client socket: "<<args->client_socket<<std::endl;
-        std::cout<<"destin socket: "<<fd<<std::endl;
+        DEBUG_CALL(std::cout<<"----------connect timeout---------------"<<std::endl);
+        DEBUG_CALL(std::cout<<"client socket: "<<args->client_socket<<std::endl);
+        DEBUG_CALL(std::cout<<"destin socket: "<<fd<<std::endl);
         event* ev = event_new(NULL, -1, 0, NULL, NULL);
         //delete in reply_cb
         ReplyCallBackArgs* replyCallBackArgs=new ReplyCallBackArgs;
@@ -193,9 +196,10 @@ void connect_cb(int fd, short events, void* _args)
         event_assign(ev, args->base, fd, EV_WRITE | EV_PERSIST, reply_cb, replyCallBackArgs);
         event_add(ev,nullptr);
 
+        event_free(args->cur);
         shutdown(fd,SHUT_RDWR);
         close(fd);
-        event_free(args->cur);
+        
         delete args;
 
         return;
@@ -203,9 +207,9 @@ void connect_cb(int fd, short events, void* _args)
     
     // 链接成功 发送reply
 
-    std::cout<<"----------connect succeed---------------"<<std::endl;
-    std::cout<<"client socket: "<<args->client_socket<<std::endl;
-    std::cout<<"destin socket: "<<fd<<std::endl;
+    DEBUG_CALL(std::cout<<"----------connect succeed---------------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<args->client_socket<<std::endl);
+    DEBUG_CALL(std::cout<<"destin socket: "<<fd<<std::endl);
 
     event* ev = event_new(NULL, -1, 0, NULL, NULL);
     //delete in reply_cb
@@ -228,14 +232,12 @@ void request_cb(int fd, short events, void* _args)
     char buf[256];
     ssize_t recv_ret=recv(fd,buf,256,0);
     //network error
-    if(recv_ret==-1)
+    if(recv_ret<=0)
     {
         LOG_ERROR("request recv error");
-        //close socket
+        event_free(args->cur);
         shutdown(fd,SHUT_RDWR);
         close(fd);
-        //release resource
-        event_free(args->cur);
         delete args;
         return;
     }
@@ -263,9 +265,9 @@ void request_cb(int fd, short events, void* _args)
     }
 
     //test
-    std::cout<<"-----request-------------"<<std::endl;
-    std::cout<<"client socket: "<<fd<<std::endl;
-    print_request(args->buf.GetData());
+    DEBUG_CALL(std::cout<<"-----request-------------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<fd<<std::endl);
+    DEBUG_CALL(print_request(args->buf.GetData()));
     
     if(args->buf.GetData()[3]!=0x01)
     {
@@ -312,13 +314,11 @@ void method_selection_cb(int fd, short events, void* _args)
     //newwork error
     if(send_ret==-1)
     {
-        std::cout<<"client socket: "<<fd<<std::endl;
+        DEBUG_CALL(std::cout<<"client socket: "<<fd<<std::endl);
         LOG_ERROR("method selection send error");
-        //close socket
+        event_free(args->cur);
         shutdown(fd,SHUT_RDWR);
         close(fd);
-        //release resource
-        event_free(args->cur);
         delete args;
         return;
     }
@@ -327,9 +327,9 @@ void method_selection_cb(int fd, short events, void* _args)
     if(args->send_cnt!=args->buf.GetUsed())
         return;
     // test
-    std::cout<<"--------send method selection------------"<<std::endl;
-    std::cout<<"client socket: "<<fd<<std::endl;
-    print_method_selection(args->buf.GetData());
+    DEBUG_CALL(std::cout<<"--------send method selection------------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<fd<<std::endl);
+    DEBUG_CALL(print_method_selection(args->buf.GetData()));
 
     event* ev = event_new(NULL, -1, 0, NULL, NULL);
     // delete in request_cb
@@ -378,12 +378,12 @@ void greeting_cb(int fd, short events, void* _args)
     char buf[257];
     ssize_t recv_ret=recv(fd,buf,257,0);
     // network error
-    if(recv_ret==-1)
+    if(recv_ret<=0)
     {
         LOG_ERROR("greeting recv error");
+        event_free(args->cur);
         shutdown(fd,SHUT_RDWR);
         close(fd);
-        event_free(args->cur);
         delete args;
         return;
     }
@@ -403,9 +403,9 @@ void greeting_cb(int fd, short events, void* _args)
         return;
     }
     // test
-    std::cout<<"--------greeting---------"<<std::endl;
-    std::cout<<"client socket: "<<fd<<std::endl;
-    print_greeting(args->buf.GetData());
+    DEBUG_CALL(std::cout<<"--------greeting---------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<fd<<std::endl);
+    DEBUG_CALL(print_greeting(args->buf.GetData()));
 
     
 
@@ -435,8 +435,8 @@ void accept_cb(int fd, short events, void* _args)
         LOG_ERROR("accept error");
         return;
     }
-    std::cout<<"----------a client link!--------------"<<std::endl;
-    std::cout<<"client socket: "<<client_socket<<std::endl;
+    DEBUG_CALL(std::cout<<"----------a client link!--------------"<<std::endl);
+    DEBUG_CALL(std::cout<<"client socket: "<<client_socket<<std::endl);
     set_socket_nonblock(client_socket);
     
     event* ev = event_new(NULL, -1, 0, NULL, NULL);
