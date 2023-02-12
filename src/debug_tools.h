@@ -34,3 +34,4 @@ void print_method_selection(const char* method_selection);
 void print_request(const char* request);
 std::string ip_to_str4(uint32_t ip);
 std::string byte_to_string_dec(uint8_t val);
+void print_reply(const char* reply);

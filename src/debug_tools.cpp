@@ -54,7 +54,7 @@ void print_call_error(const char* func,const char* file,int line)
 
 void print_error(const char* error,const char* file,int line)
 {
-    std::cout<<"Error: "<<error<<" in "<<file<<":"<<line<<std::endl;
+    std::cout<<"Error: "<<error<<" in "<<file<<":"<<line<<""<<std::endl;
 }
 
 void print_greeting(const char* greeting)
@@ -146,11 +146,45 @@ void print_request(const char* request)
 			std::cout<<byte_to_string(request[4+i]);
 		}
 		std::cout<<std::endl;
-		std::cout<<"DST.PORT: "<<ntohs(*((uint16_t*)&request[20]))<<std::endl;;
+		std::cout<<"DST.PORT: "<<ntohs(*((uint16_t*)&request[20]))<<std::endl;
 	}
 }
 
 void print_debug_msg(const char* msg,const char* file,int line)
 {
 	std::cout<<"debug: "<<msg<<" in "<<file<<":"<<line<<std::endl;
+}
+
+void print_reply(const char* reply)
+{
+	std::cout<<"VER: "<<byte_to_string(reply[0])<<std::endl;
+	std::cout<<"REP: "<<byte_to_string(reply[1])<<std::endl;
+	std::cout<<"RSV: "<<byte_to_string(reply[2])<<std::endl;
+	std::cout<<"ATYP: "<<byte_to_string(reply[3])<<std::endl;
+	if(reply[3]==0x01)
+	{
+		//ipv4
+		std::cout<<"BND.ADDR: "<<ip_to_str4(*((uint32_t*)&reply[4]))<<std::endl;
+		std::cout<<"BND.PORT: "<<ntohs(*((uint16_t*)&reply[8]))<<std::endl;
+	}
+	else if(reply[3]==0x03)
+	{
+		std::cout<<"domain name length: "<<byte_to_string(reply[4])<<std::endl;
+		std::cout<<"domain: ";
+		for(int i=0;i<(uint8_t)reply[4];i++)
+		{
+			std::cout<<reply[5+i];
+		}
+		std::cout<<std::endl;
+	}
+	else if(reply[3]==0x04)
+	{
+		std::cout<<"DST.ADDR: ";
+		for(int i=0;i<16;i++)
+		{
+			std::cout<<byte_to_string(reply[4+i]);
+		}
+		std::cout<<std::endl;
+		std::cout<<"DST.PORT: "<<ntohs(*((uint16_t*)&reply[20]))<<std::endl;
+	}
 }

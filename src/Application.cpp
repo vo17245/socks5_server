@@ -10,7 +10,13 @@
 #include "debug_tools.h"
 
 
-
+timeval timeout;
+void init()
+{
+    //init event timeout
+    timeout.tv_sec=5;
+    timeout.tv_usec=0;
+}
 int main()
 {
     const char str[]="0.0.0.0";
