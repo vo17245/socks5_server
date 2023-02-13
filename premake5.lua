@@ -8,16 +8,21 @@ project "socks5_server"
     objdir "bin-int/%{cfg.buildcfg}"
     files {"src/**.cpp","src/**.h"}
     removefiles { "src/echo_server.cpp"}
-    includedirs{"/home/ubuntu/lib/libevent/include","src"}
+    includedirs
+    {
+        "/home/ubuntu/lib/libevent/include",
+        "src",
+        "vendor"
+    }
     
     libdirs {"/home/ubuntu/lib/libevent/lib"}
     links { "event" }
     
     filter "configurations:Debug"
-        defines {"DEBUG"}
+        defines {"CONFIG_DEBUG"}
 
         
     filter "configurations:Release"
-        defines {"NDEBUG"}
+        defines {"CONFIG_RELEASE"}
         optimize "On"
 

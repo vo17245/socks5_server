@@ -8,7 +8,7 @@ std::string byte_to_string(uint8_t byte);
 void print_call_error(const char* func,const char* file,int line);
 void print_error(const char* error,const char* file,int line);
 void print_debug_msg(const char* msg,const char* file,int line);
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG
     #define NET_CALL(x) \
     if((x)==false)\
     {\

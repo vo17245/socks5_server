@@ -8,7 +8,7 @@
 #include "net_tools.h"
 #include "callback.h"
 #include "debug_tools.h"
-
+#include "Log.h"
 
 timeval timeout;
 void init()
@@ -26,9 +26,9 @@ int main()
     int server_socket;
     NET_CALL(create_server_socket(server_socket,ip,port));
     NET_CALL(set_socket_nonblock(server_socket));
-    std::cout<<"create server socket succeed"<<std::endl;
-    std::cout<<"ip: "<<str<<std::endl;
-    std::cout<<"port: "<<port<<std::endl;
+    INFO("create server socket succeed");
+    INFO("ip: {0}",str);
+    INFO("port: {0}",port);
     event_base* base = event_base_new();
     AcceptCallbackArgs args={base};
     event* ev_accept = event_new(base, server_socket, EV_READ | EV_PERSIST, accept_cb, &args);
