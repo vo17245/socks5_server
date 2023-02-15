@@ -74,11 +74,12 @@ void read_cb(int fd, short events, void* _args)
         event_assign(ev,base, data_with->fd, EV_WRITE |EV_PERSIST,write_cb ,pair);
         event_add(ev,nullptr);
         event_free(data->ev_read);
+        data->ev_read=nullptr;
     }
     
     return;
     ERROR:
-    LOG_CALL(delete pair);
+    delete pair;
 }
 void reply_cb(int fd, short events, void* _args)
 {

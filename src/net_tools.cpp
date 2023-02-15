@@ -38,7 +38,6 @@ bool str_to_ip6(const char* str,char* ip)
 bool create_tcp_socket(int& sock)
 {
     sock=socket(AF_INET,SOCK_STREAM,0);
-    DEBUG("create a tcp socket fd={0}",sock);
     return sock!=-1;
 }
 
