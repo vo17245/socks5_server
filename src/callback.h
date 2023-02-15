@@ -8,18 +8,40 @@
 #include <unordered_map>
 #include "Buffer.h"
 #include "net_tools.h"
+#include "SocketBuffer.h"
+#include "Log.h"
 
-
-class TalkCallbackArgs
+struct SocketData
+{
+    int fd;
+    event* ev_write;
+    event* ev_read;
+    SocketBuffer buf;
+};
+class SocketPair
 {
     public:
-    TalkCallbackArgs(){}
-    ~TalkCallbackArgs(){}
-    event_base* base;
+    SocketPair(){}
+    ~SocketPair()
+    {
+        if(a.ev_read!=nullptr)
+            event_free(a.ev_read);
+        if(b.ev_read!=nullptr)
+            event_free(b.ev_read);
+        if(a.ev_write!=nullptr)
+            event_free(a.ev_write);
+        if(b.ev_write!=nullptr)
+            event_free(b.ev_write);
+        shutdown(a.fd,SHUT_RDWR);
+        shutdown(b.fd,SHUT_RDWR);
+        close(a.fd);
+        close(b.fd);
+
+    }
+    SocketData a;
+    SocketData b;
     event* cur;
-    event* event_with;
-    // destin socket or client socket
-    int socket_with;
+    
 };
 class ReplyCallBackArgs
 {

@@ -1,55 +1,84 @@
 #include "callback.h"
 #include "SocketBuffer.h"
 #include "Log.h"
-std::unordered_map<int,SocketBuffer> socket_buffer_map;
 
-void talk_cb(int fd, short events, void* _args)
+extern event_base* base;
+void read_cb(int fd, short events, void* _args);
+void write_cb(int fd, short events, void* _args)
 {
-    TalkCallbackArgs* args=(TalkCallbackArgs*)_args;
+    SocketPair* pair=(SocketPair*)_args;
     if(events&EV_TIMEOUT)
     {
         goto ERROR;
     }
-    else if(events&EV_READ)
     {
-        auto iter=socket_buffer_map.find(fd);
-        if(iter==socket_buffer_map.end())
+        SocketData* data;
+        SocketData* data_with;
+        if(fd==pair->a.fd)
         {
-            ERROR("socket {0} not found in socket_buffer_map");
+            data=&(pair->a);
+            data_with=&(pair->b);
+        }
+        else
+        {
+            data=&(pair->b);
+            data_with=&(pair->a);
+        }
+        ssize_t ret=data_with->buf.Pop(fd,data_with->buf.getrest());
+        if(ret<=0)
+        {
             goto ERROR;
         }
-        int recv_ret=iter->second.Push(fd,256);
-        if(recv_ret<=0)
-            goto ERROR;
+        if(data_with->buf.getrest()==0)
+        {
+            event_free(data->ev_write);
+            data->ev_write=nullptr;
+            event* ev_read = event_new(NULL, -1, 0, NULL, NULL);
+            data_with->ev_read=ev_read;
+            event_assign(ev_read,base, data_with->fd, EV_READ |EV_PERSIST,read_cb ,pair);
+            event_add(ev_read,nullptr);
+        }
     }
-    else if(events&EV_WRITE)
-    {
-        auto iter=socket_buffer_map.find(args->socket_with);
-        if(iter==socket_buffer_map.end())
-        {
-            ERROR("socket {0} not found in socket_buffer_map");
-            goto ERROR;
-        }
-        if((iter->second.recv_buf.GetUsed()-iter->second.buf_send_cnt)!=0)
-        {
-            int send_ret=iter->second.Pop(fd,iter->second.recv_buf.GetUsed()-iter->second.buf_send_cnt);
-            if(send_ret<=0)
-                goto ERROR;
-        }
-    }
-
     return;
     ERROR:
-    event_free(args->cur);
-    event_free(args->event_with);
-    shutdown(fd,SHUT_RDWR);
-    close(fd);
-    shutdown(args->socket_with,SHUT_RDWR);
-    close(args->socket_with);
-    socket_buffer_map.erase(fd);
-    socket_buffer_map.erase(args->socket_with);
-    delete args;
+    delete pair;
+    
+}
+void read_cb(int fd, short events, void* _args)
+{
+    SocketPair* pair=(SocketPair*)_args;
+    if(events&EV_TIMEOUT)
+    {
+        goto ERROR;
+    }
+
+    {
+        SocketData* data;
+        SocketData* data_with;
+        if(fd==pair->a.fd)
+        {
+            data=&(pair->a);
+            data_with=&(pair->b);
+        }
+        else
+        {
+            data=&(pair->b);
+            data_with=&(pair->a);
+        }
+        ssize_t ret=data->buf.Push(fd,256);
+        if(ret<=0)
+            goto ERROR;
+        event* ev = event_new(NULL, -1, 0, NULL, NULL);
+        data_with->ev_write=ev;
+        pair->cur=ev;
+        event_assign(ev,base, data_with->fd, EV_WRITE |EV_PERSIST,write_cb ,pair);
+        event_add(ev,nullptr);
+        event_free(data->ev_read);
+    }
+    
     return;
+    ERROR:
+    LOG_CALL(delete pair);
 }
 void reply_cb(int fd, short events, void* _args)
 {
@@ -73,39 +102,24 @@ void reply_cb(int fd, short events, void* _args)
         goto ERROR;
 
         
-    DEBUG_CALL(print_reply(args->reply.GetData()));
     // client destin 开始通信 
     {
         // set event
-        event* ev_client = event_new(NULL, -1, 0, NULL, NULL);
-        event* ev_destin = event_new(NULL, -1, 0, NULL, NULL);
-
-        TalkCallbackArgs* client_talk_args=new TalkCallbackArgs;
-        client_talk_args->base=args->base;
-        client_talk_args->cur=ev_client;
-        client_talk_args->socket_with=args->destin_socket;
-        client_talk_args->event_with=ev_destin;
-       
-        TalkCallbackArgs* destin_talk_args=new TalkCallbackArgs;
-        destin_talk_args->base=args->base;
-        destin_talk_args->cur=ev_destin;
-        destin_talk_args->socket_with=fd;
-        destin_talk_args->event_with=ev_client;
-        event_assign(ev_client, args->base, fd, EV_WRITE |EV_READ| EV_PERSIST, talk_cb,client_talk_args);
-        event_add(ev_client,nullptr);
-
-        event_assign(ev_destin, args->base, args->destin_socket, EV_WRITE |EV_READ| EV_PERSIST, talk_cb,destin_talk_args);
-        event_add(ev_destin,nullptr);
-
-        // add socket status to status_map
-        //client
-        SocketBuffer client_status;
-        std::pair<int,SocketBuffer> client_pair(fd,std::move(client_status));
-        socket_buffer_map.insert(std::move(client_pair));
-        //destin
-        SocketBuffer destin_status;
-        std::pair<int,SocketBuffer> destin_pair(args->destin_socket,std::move(destin_status));
-        socket_buffer_map.insert(std::move(destin_pair));
+        // client -> a
+        // destin -> b
+        event* ev_client_read = event_new(NULL, -1, 0, NULL, NULL);
+        event* ev_destin_read = event_new(NULL, -1, 0, NULL, NULL);
+        SocketPair* sockpair=new SocketPair;
+        sockpair->a.ev_read=ev_client_read;
+        sockpair->b.ev_read=ev_destin_read;
+        sockpair->a.ev_write=nullptr;
+        sockpair->b.ev_write=nullptr;
+        sockpair->a.fd=fd;
+        sockpair->b.fd=args->destin_socket;
+        event_assign(ev_client_read, args->base, fd, EV_READ| EV_PERSIST,read_cb ,sockpair);
+        event_add(ev_client_read,nullptr);
+        event_assign(ev_destin_read, args->base, args->destin_socket, EV_READ| EV_PERSIST, read_cb,sockpair);
+        event_add(ev_destin_read,nullptr);
     }
     event_free(args->cur);
     delete args;
@@ -262,8 +276,8 @@ void request_cb(int fd, short events, void* _args)
     {
         //尝试链接destin,添加connect事件
         int destin_socket;
-        NET_CALL(create_tcp_socket(destin_socket));
-        NET_CALL(set_socket_nonblock(destin_socket));
+        ASSERT(create_tcp_socket(destin_socket));
+        ASSERT(set_socket_nonblock(destin_socket));
         connect4(destin_socket,*((uint32_t*)&(args->buf.GetData()[4])),htons(*((uint16_t*)&(args->buf.GetData()[8]))));
 
         event* ev = event_new(NULL, -1, 0, NULL, NULL);
@@ -351,7 +365,6 @@ void greeting_cb(int fd, short events, void* _args)
     // network error
     if(recv_ret<=0)
     {
-        LOG_ERROR("greeting recv error");
         event_free(args->cur);
         shutdown(fd,SHUT_RDWR);
         close(fd);
@@ -398,9 +411,10 @@ void accept_cb(int fd, short events, void* _args)
     sockaddr_in client_addr;
     unsigned int client_addr_len=sizeof(sockaddr_in);
     int client_socket=accept(fd,(sockaddr*)&client_addr,&client_addr_len);
+    ASSERT(client_socket!=-1);
     if(client_socket==-1)
     {
-        LOG_ERROR("accept error");
+        ERROR("accept error");
         return;
     }
     set_socket_nonblock(client_socket);

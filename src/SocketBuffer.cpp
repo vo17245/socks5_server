@@ -21,7 +21,7 @@ void SocketBuffer::delete_has_send()
     recv_buf=std::move(buf);
     buf_send_cnt=0;
 }
-int SocketBuffer::Push(int sock,int size)
+ssize_t SocketBuffer::Push(int sock,int size)
 {
     Buffer buf(size);
     ssize_t ret=recv(sock,(char*)buf.GetData(),size,0);
@@ -30,7 +30,7 @@ int SocketBuffer::Push(int sock,int size)
     recv_buf.Push(ret,buf.GetData());
     return ret;
 }
-int SocketBuffer::Pop(int sock,int size)
+ssize_t SocketBuffer::Pop(int sock,int size)
 {
     ssize_t ret=send(sock,((char*)recv_buf.GetData())+buf_send_cnt,recv_buf.GetUsed()-buf_send_cnt,0);
     if(ret<=0)
