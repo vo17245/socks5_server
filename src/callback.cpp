@@ -221,12 +221,12 @@ void connect_cb(int fd, short events, void* _args)
     event_free(args->cur);
     delete args;
 }
-
+//char request_cb_buf[256];
 void request_cb(int fd, short events, void* _args)
 {
     RequestCallBackArgs* args=(RequestCallBackArgs*)_args;
-    char buf[256];
-    ssize_t recv_ret=recv(fd,buf,256,0);
+    char request_cb_buf[256];
+    ssize_t recv_ret=recv(fd,request_cb_buf,256,0);
     //network error
     if(recv_ret<=0)
     {
@@ -236,7 +236,7 @@ void request_cb(int fd, short events, void* _args)
         delete args;
         return;
     }
-    args->buf.Push(recv_ret,buf);
+    args->buf.Push(recv_ret,request_cb_buf);
     // received request incomplete
     if(args->buf.GetUsed()<4)
         return;
@@ -277,8 +277,11 @@ void request_cb(int fd, short events, void* _args)
     {
         //尝试链接destin,添加connect事件
         int destin_socket;
-        ASSERT(create_tcp_socket(destin_socket));
-        ASSERT(set_socket_nonblock(destin_socket));
+        bool ret;
+        ret=create_tcp_socket(destin_socket);
+        SOCK_ASSERT(ret!=false);
+        ret=set_socket_nonblock(destin_socket);
+        SOCK_ASSERT(ret!=false);
         connect4(destin_socket,*((uint32_t*)&(args->buf.GetData()[4])),htons(*((uint16_t*)&(args->buf.GetData()[8]))));
 
         event* ev = event_new(NULL, -1, 0, NULL, NULL);
@@ -412,7 +415,7 @@ void accept_cb(int fd, short events, void* _args)
     sockaddr_in client_addr;
     unsigned int client_addr_len=sizeof(sockaddr_in);
     int client_socket=accept(fd,(sockaddr*)&client_addr,&client_addr_len);
-    ASSERT(client_socket!=-1);
+    SOCK_ASSERT(client_socket!=-1);
     if(client_socket==-1)
     {
         ERROR("accept error");

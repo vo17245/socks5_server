@@ -26,11 +26,14 @@ int main()
     const char str[]="0.0.0.0";
     uint16_t port=1080;
     uint32_t ip;
-    bool net_call_ret;
-    ASSERT(str_to_ip4(str,ip));
+    bool ret;
+    ret=str_to_ip4(str,ip);
+    SOCK_ASSERT(ret!=false);
     int server_socket;
-    ASSERT(create_server_socket(server_socket,ip,port));
-    ASSERT(set_socket_nonblock(server_socket));
+    ret=create_server_socket(server_socket,ip,port);
+    SOCK_ASSERT(ret!=false);
+    ret=set_socket_nonblock(server_socket);
+    SOCK_ASSERT(ret!=false);
     INFO("create server socket succeed");
     INFO("ip: {0}",str);
     INFO("port: {0}",port);

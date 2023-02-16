@@ -11,7 +11,8 @@ void print_debug_msg(const char* msg,const char* file,int line);
 
 
 #ifdef CONFIG_DEBUG
-    #define ASSERT(x) if(!(x)) {ERROR("[ASSERT]{0} in {2}:{3}",#x,__FILE__,__LINE__);exit(-1);}
+    #define ASSERT(x) if(!(x)) {ERROR("[ASSERT]{0} in {1}:{2}",#x,__FILE__,__LINE__);exit(-1);}
+    #define SOCK_ASSERT(x) if(!(x)) {ERROR("[SOCK_ASSERT]{0} errno={1} in {2}:{3}",#x,errno,__FILE__,__LINE__);exit(-1);}
     #define LOG_ERROR(x) print_error(x,__FILE__,__LINE__)
     #define LOG_DEBUG(x) print_debug_msg(x,__FILE__,__LINE__)
     #define LOG_CALL(x) std::cout<<#x<<" in "<<__FILE__<<":"<<__LINE__<<std::endl;\
@@ -21,6 +22,7 @@ void print_debug_msg(const char* msg,const char* file,int line);
     #define DEBUG_CALL(x) x;
 #else
     #define ASSERT(x) x;
+    #define SOCK_ASSERT(x) ;
     #define LOG_ERROR(x) ;
     #define LOG_DEBUG(x) ;
     #define LOG_CALL(x) x;
