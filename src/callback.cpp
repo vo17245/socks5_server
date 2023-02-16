@@ -3,6 +3,8 @@
 #include "Log.h"
 
 extern event_base* base;
+const size_t SOCK_BUF_SIZE=512;
+char sock_buf[SOCK_BUF_SIZE];
 void read_cb(int fd, short events, void* _args);
 void write_cb(int fd, short events, void* _args)
 {
@@ -221,12 +223,12 @@ void connect_cb(int fd, short events, void* _args)
     event_free(args->cur);
     delete args;
 }
-//char request_cb_buf[256];
+
 void request_cb(int fd, short events, void* _args)
 {
     RequestCallBackArgs* args=(RequestCallBackArgs*)_args;
-    char request_cb_buf[256];
-    ssize_t recv_ret=recv(fd,request_cb_buf,256,0);
+
+    ssize_t recv_ret=recv(fd,sock_buf,SOCK_BUF_SIZE,0);
     //network error
     if(recv_ret<=0)
     {
@@ -236,7 +238,7 @@ void request_cb(int fd, short events, void* _args)
         delete args;
         return;
     }
-    args->buf.Push(recv_ret,request_cb_buf);
+    args->buf.Push(recv_ret,sock_buf);
     // received request incomplete
     if(args->buf.GetUsed()<4)
         return;
@@ -364,8 +366,8 @@ static bool CreateMethodSelection(const Buffer& greeting,Buffer& method_selectio
 void greeting_cb(int fd, short events, void* _args)
 {
     GreetingCallBackArgs* args=(GreetingCallBackArgs*)_args;
-    char buf[257];
-    ssize_t recv_ret=recv(fd,buf,257,0);
+    
+    ssize_t recv_ret=recv(fd,sock_buf,SOCK_BUF_SIZE,0);
     // network error
     if(recv_ret<=0)
     {
@@ -375,7 +377,7 @@ void greeting_cb(int fd, short events, void* _args)
         delete args;
         return;
     }
-    args->buf.Push(recv_ret,buf);
+    args->buf.Push(recv_ret,sock_buf);
     // received greeting incomplete 
     if(args->buf.GetUsed()<2)
         return;

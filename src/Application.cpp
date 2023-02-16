@@ -12,6 +12,7 @@
 
 timeval timeout;
 event_base* base;
+
 void init()
 {
     //init event timeout
