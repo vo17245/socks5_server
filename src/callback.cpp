@@ -8,6 +8,7 @@ char sock_buf[SOCK_BUF_SIZE];
 void read_cb(int fd, short events, void* _args);
 void write_cb(int fd, short events, void* _args)
 {
+    DEBUG("---------write_cb---------");
     SocketPair* pair=(SocketPair*)_args;
     if(events&EV_TIMEOUT)
     {
@@ -43,11 +44,12 @@ void write_cb(int fd, short events, void* _args)
     }
     return;
     ERROR:
-    delete pair;
+    DEBUG_CALL(delete pair);
     
 }
 void read_cb(int fd, short events, void* _args)
 {
+    DEBUG("---------read_cb---------");
     SocketPair* pair=(SocketPair*)_args;
     if(events&EV_TIMEOUT)
     {
@@ -72,7 +74,6 @@ void read_cb(int fd, short events, void* _args)
             goto ERROR;
         event* ev = event_new(NULL, -1, 0, NULL, NULL);
         data_with->ev_write=ev;
-        pair->cur=ev;
         event_assign(ev,base, data_with->fd, EV_WRITE |EV_PERSIST,write_cb ,pair);
         event_add(ev,nullptr);
         event_free(data->ev_read);
@@ -81,10 +82,11 @@ void read_cb(int fd, short events, void* _args)
     
     return;
     ERROR:
-    delete pair;
+    DEBUG_CALL(delete pair);
 }
 void reply_cb(int fd, short events, void* _args)
 {
+    DEBUG("---------reply_cb---------");
     ReplyCallBackArgs* args=(ReplyCallBackArgs*)_args;
     ssize_t send_ret;
     //event timeout
@@ -92,7 +94,7 @@ void reply_cb(int fd, short events, void* _args)
     {
         goto ERROR;
     }
-    send_ret=send(fd,args->reply.GetData()+args->send_cnt,args->reply.GetUsed()-args->send_cnt,0);
+    send_ret=send(fd,args->reply.GetData()+args->send_cnt,args->reply.GetUsed()-args->send_cnt,MSG_NOSIGNAL);
     if(send_ret==-1)
     {
         goto ERROR;
@@ -185,6 +187,7 @@ static bool create_reply(const Buffer& request,Buffer& reply,int status)
 }
 void connect_cb(int fd, short events, void* _args)
 {
+    DEBUG("---------connect_cb---------");
     ConnectCallBackArgs* args=(ConnectCallBackArgs*)_args;
     if(events&EV_TIMEOUT)
     {
@@ -226,6 +229,7 @@ void connect_cb(int fd, short events, void* _args)
 
 void request_cb(int fd, short events, void* _args)
 {
+    DEBUG("---------request_cb---------");
     RequestCallBackArgs* args=(RequestCallBackArgs*)_args;
 
     ssize_t recv_ret=recv(fd,sock_buf,SOCK_BUF_SIZE,0);
@@ -306,7 +310,7 @@ void request_cb(int fd, short events, void* _args)
 void method_selection_cb(int fd, short events, void* _args)
 {
     MethodSelectionCallBackArgs* args=(MethodSelectionCallBackArgs*)_args;
-    ssize_t send_ret=send(fd,args->buf.GetData()+args->send_cnt,args->buf.GetUsed()-args->send_cnt,0);
+    ssize_t send_ret=send(fd,args->buf.GetData()+args->send_cnt,args->buf.GetUsed()-args->send_cnt,MSG_NOSIGNAL);
     //newwork error
     if(send_ret==-1)
     {
@@ -418,13 +422,9 @@ void accept_cb(int fd, short events, void* _args)
     unsigned int client_addr_len=sizeof(sockaddr_in);
     int client_socket=accept(fd,(sockaddr*)&client_addr,&client_addr_len);
     SOCK_ASSERT(client_socket!=-1);
-    if(client_socket==-1)
-    {
-        ERROR("accept error");
-        return;
-    }
-    set_socket_nonblock(client_socket);
-    
+    bool ret;
+    ret=set_socket_nonblock(client_socket);
+    SOCK_ASSERT(ret!=false);
     event* ev = event_new(NULL, -1, 0, NULL, NULL);
     // delete in greeting_cb
     GreetingCallBackArgs* greetingCallBackArgs =new GreetingCallBackArgs;

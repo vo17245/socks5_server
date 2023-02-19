@@ -13,7 +13,7 @@ public:
 	Buffer(const Buffer& buffer);
 	Buffer(Buffer&& buffer)noexcept;
 	void operator=(const Buffer& buffer);
-	void operator=(Buffer& buffer);
+	void operator=(Buffer&& buffer);
 	~Buffer();
 	void Push(size_t size,const char* data);
 	void Push(size_t size, std::function<void(char*)> writer);

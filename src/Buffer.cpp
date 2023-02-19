@@ -2,7 +2,7 @@
 #include <string.h>
 
 //test
-#include <iostream>
+#include "Log.h"
 
 Buffer::Buffer()
 	:m_Data(nullptr),m_Used(0),m_Size(0)
@@ -32,7 +32,7 @@ void Buffer::operator=(const Buffer& buffer)
 	m_Data = new char[m_Size];
 	memcpy(m_Data, buffer.m_Data, m_Used);
 }
-void Buffer::operator=(Buffer& buffer)
+void Buffer::operator=(Buffer&& buffer)
 {
 	if(m_Data!=nullptr)
 		delete m_Data;
@@ -43,6 +43,7 @@ void Buffer::operator=(Buffer& buffer)
 }
 Buffer::~Buffer()
 {
+	DEBUG("Buffer::~Buffer()");
 	if (m_Data != nullptr)
 		delete m_Data;
 }

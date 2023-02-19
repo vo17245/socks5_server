@@ -40,7 +40,6 @@ class SocketPair
     }
     SocketData a;
     SocketData b;
-    event* cur;
     
 };
 class ReplyCallBackArgs

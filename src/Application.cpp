@@ -20,11 +20,12 @@ void init()
     timeout.tv_usec=0;
     //init libevent
     base = event_base_new();
+    
 }
 int main()
 {
     init();
-    const char str[]="0.0.0.0";
+    const char str[]="127.0.0.1";
     uint16_t port=1080;
     uint32_t ip;
     bool ret;

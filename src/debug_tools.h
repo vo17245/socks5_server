@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include "Log.h"
 
 char hex_to_char(char hex);
 std::string byte_to_string(uint8_t byte);
@@ -15,16 +16,14 @@ void print_debug_msg(const char* msg,const char* file,int line);
     
     #define LOG_ERROR(x) print_error(x,__FILE__,__LINE__)
     #define LOG_DEBUG(x) print_debug_msg(x,__FILE__,__LINE__)
-    #define LOG_CALL(x) std::cout<<#x<<" in "<<__FILE__<<":"<<__LINE__<<std::endl;\
-    std::cout<<"start"<<std::endl;\
+    #define DEBUG_CALL(x) DEBUG("{0} start in {1}:{2}",#x,__FILE__,__LINE__);\
     x;\
-    std::cout<<"end"<<std::endl;
-    #define DEBUG_CALL(x) x;
+    DEBUG("{0} end in {1}:{2}",#x,__FILE__,__LINE__);
 #else
     #define LOG_ERROR(x) ;
     #define LOG_DEBUG(x) ;
     #define LOG_CALL(x) x;
-    #define DEBUG_CALL(x) ;
+    #define DEBUG_CALL(x) x;
 #endif
 
 

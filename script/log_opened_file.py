@@ -21,8 +21,11 @@ def getpid(name:str)->str:
     arr=output.split(" ")
     return arr[6]
 
-cmd_get_opened_file_num="lsof -p "+getpid(name) +" |wc -l"
-
+pid=getpid(name)
+print("pid: ",pid)
+input()
+cmd_get_opened_file_num="lsof -p "+pid +" |wc -l"
+print("cmd: ",cmd_get_opened_file_num)
 while True:
     now=gettime()
     msg=execute(cmd_get_opened_file_num)
